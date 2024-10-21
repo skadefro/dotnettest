@@ -16,7 +16,7 @@ class Program
         try
         {
             Client client = new Client();
-            // client.enabletracing("openiap=debug", "new");
+            client.enabletracing("openiap=info", "new");
             client.enabletracing("info", "");
             await client.connect();
             if(!client.connected() ) {
@@ -25,72 +25,95 @@ class Program
             }
             Console.WriteLine("Client connection success: " + client.connected());
 
-            var (jwt, error, success) = await client.Signin();
-            Console.WriteLine("Signin JWT: " + jwt);
-
-            // string results = await client.Query("entities", "{}", "{\"name\": 1}");
-            // Console.WriteLine("results: " + results);
-
-            // for(var y = 0; y < 5; y++) {
-            //     var promises = new List<Task<string>>();
-            //     for(var x = 0; x < 15; x++) {
-            //         promises.Add(client.Query("entities", "{}", "{\"name\": 1}"));
+            // while (true)
+            //  {
+            //     await Task.Delay(500);
+            //     try
+            //     {
+            //         var workitem = await client.PopWorkitem("q2");
+            //         if(workitem != null) {
+            //             Console.WriteLine("workitem: " + workitem.id + " " + workitem.name);
+            //             workitem.state = "successful";
+            //             await client.UpdateWorkitem(workitem, new string[] { });
+            //         } else {
+            //             Console.WriteLine("No workitem");
+            //         }
+                    
             //     }
-            //     var result = await Task.WhenAll(promises);
-            //     Console.WriteLine("results: " + result.Length);
+            //     catch (System.Exception ex)
+            //     {
+            //         Console.WriteLine("Error: " + ex.Message);
+            //         await Task.Delay(10000);
+            //     }
             // }
 
-            // // // System.Threading.Thread.Sleep(120000);
 
-            // var aggregate_results = await client.Aggregate("entities", "[]");
-            // Console.WriteLine("aggregate results: " + aggregate_results);
+            var (jwt, error, success) = await client.Signin();
+            Console.WriteLine("Signin JWT: ", jwt, "success: ", success, "error: ", error);
 
-            // var insert_one_result = await client.InsertOne("entities", "{\"name\": \"test from dotnet\", \"_type\": \"test\"}");
-            // Console.WriteLine("insert one result: " + insert_one_result);
+            string results = await client.Query("entities", "{}", "{\"name\": 1}");
+            Console.WriteLine("results: " + results);
 
-            // dynamic? item = JsonSerializer.Deserialize<ExpandoObject>(insert_one_result, new JsonSerializerOptions { IncludeFields = true });
-            // if(item == null) throw new Exception("Failed to deserialize insert_one_result");
-            // item.name = "test from dotnet updated";
-            // System.Text.Json.JsonElement itemid = item._id;
-            // var _id = itemid.GetString();
-            // if(string.IsNullOrEmpty(_id)) throw new Exception("Failed to get _id from insert_one_result");
+            for(var y = 0; y < 5; y++) {
+                var promises = new List<Task<string>>();
+                for(var x = 0; x < 15; x++) {
+                    promises.Add(client.Query("entities", "{}", "{\"name\": 1}"));
+                }
+                var result = await Task.WhenAll(promises);
+                Console.WriteLine("results: " + result.Length);
+            }
+
+            // // System.Threading.Thread.Sleep(120000);
+
+            var aggregate_results = await client.Aggregate("entities", "[]");
+            Console.WriteLine("aggregate results: " + aggregate_results);
+
+            var insert_one_result = await client.InsertOne("entities", "{\"name\": \"test from dotnet\", \"_type\": \"test\"}");
+            Console.WriteLine("insert one result: " + insert_one_result);
+
+            dynamic? item = JsonSerializer.Deserialize<ExpandoObject>(insert_one_result, new JsonSerializerOptions { IncludeFields = true });
+            if(item == null) throw new Exception("Failed to deserialize insert_one_result");
+            item.name = "test from dotnet updated";
+            System.Text.Json.JsonElement itemid = item._id;
+            var _id = itemid.GetString();
+            if(string.IsNullOrEmpty(_id)) throw new Exception("Failed to get _id from insert_one_result");
             
-            // insert_one_result = JsonSerializer.Serialize(item);
+            insert_one_result = JsonSerializer.Serialize(item);
 
-            // var update_one_result = await client.UpdateOne("entities", insert_one_result);
-            // Console.WriteLine("update one result: " + update_one_result);
+            var update_one_result = await client.UpdateOne("entities", insert_one_result);
+            Console.WriteLine("update one result: " + update_one_result);
 
-            // var delete_one_result = await client.DeleteOne("entities", _id);
-            // Console.WriteLine("delete one result: " + delete_one_result);
+            var delete_one_result = await client.DeleteOne("entities", _id);
+            Console.WriteLine("delete one result: " + delete_one_result);
 
-            // var insert_or_update_one_result2 = await client.InsertOne("entities", "{\"name\": \"test insert or update from dotnet\", \"_type\": \"test\"}");
-            // Console.WriteLine("insert one result: " + insert_or_update_one_result2);
-            // dynamic? item2 = JsonSerializer.Deserialize<ExpandoObject>(insert_or_update_one_result2, new JsonSerializerOptions { IncludeFields = true });
-            // if(item2 == null) throw new Exception("Failed to deserialize insert_one_result");
-            // item2.name = "test insert or update from dotnet updated";
-            // insert_or_update_one_result2 = System.Text.Json.JsonSerializer.Serialize(item2);
-            // insert_or_update_one_result2 = await client.InsertOrUpdateOne("entities", insert_or_update_one_result2);
+            var insert_or_update_one_result2 = await client.InsertOne("entities", "{\"name\": \"test insert or update from dotnet\", \"_type\": \"test\"}");
+            Console.WriteLine("insert one result: " + insert_or_update_one_result2);
+            dynamic? item2 = JsonSerializer.Deserialize<ExpandoObject>(insert_or_update_one_result2, new JsonSerializerOptions { IncludeFields = true });
+            if(item2 == null) throw new Exception("Failed to deserialize insert_one_result");
+            item2.name = "test insert or update from dotnet updated";
+            insert_or_update_one_result2 = System.Text.Json.JsonSerializer.Serialize(item2);
+            insert_or_update_one_result2 = await client.InsertOrUpdateOne("entities", insert_or_update_one_result2);
 
-            // System.Text.Json.JsonElement itemid2 = item2._id;
-            // var _id2 = itemid2.GetString();
-            // if(string.IsNullOrEmpty(_id2)) throw new Exception("Failed to get _id from insert_one_result");
+            System.Text.Json.JsonElement itemid2 = item2._id;
+            var _id2 = itemid2.GetString();
+            if(string.IsNullOrEmpty(_id2)) throw new Exception("Failed to get _id from insert_one_result");
 
-            // var delete_many_by_ids_result = await client.DeleteMany("entities", ids: new string[] { _id2 });
-            // Console.WriteLine("delete many by ids result: " + delete_many_by_ids_result);
+            var delete_many_by_ids_result = await client.DeleteMany("entities", ids: new string[] { _id2 });
+            Console.WriteLine("delete many by ids result: " + delete_many_by_ids_result);
 
-            // await client.InsertOne("entities", "{\"name\": \"test delete many from dotnet\", \"_type\": \"test\"}");
-            // var delete_many_by_query_result = await client.DeleteMany("entities", query: "{\"name\": \"test delete many from dotnet\"}");
-            // Console.WriteLine("delete many by query result: " + delete_many_by_query_result);
+            await client.InsertOne("entities", "{\"name\": \"test delete many from dotnet\", \"_type\": \"test\"}");
+            var delete_many_by_query_result = await client.DeleteMany("entities", query: "{\"name\": \"test delete many from dotnet\"}");
+            Console.WriteLine("delete many by query result: " + delete_many_by_query_result);
 
-            // await client.download("fs.files", "65a3aaf66d52b8c15131aebd", folder: "", filename: "");
+            await client.download("fs.files", "65a3aaf66d52b8c15131aebd", folder: "", filename: "");
 
-            // var filepath = "testfile.csv";
-            // if(!System.IO.File.Exists(filepath))
-            // {
-            //     filepath = "../testfile.csv";
-            // }
-            // var upload_response = await client.upload(filepath, "dotnet-test.csv", "", "", "fs.files");
-            // Console.WriteLine("Dotnet: upload success as " +  upload_response);
+            var filepath = "testfile.csv";
+            if(!System.IO.File.Exists(filepath))
+            {
+                filepath = "../testfile.csv";
+            }
+            var upload_response = await client.upload(filepath, "dotnet-test.csv", "", "", "fs.files");
+            Console.WriteLine("Dotnet: upload success as " +  upload_response);
 
             var eventcount = 0;
             var watch_response = await client.watch("entities", "", (eventObj) => {
@@ -146,7 +169,9 @@ class Program
             var distinct_response = await client.Distinct("entities", "_type");
             Console.WriteLine("Dotnet: distinct success as " + string.Join(",", distinct_response));
 
+            Console.WriteLine("*****************************");
             client.Dispose();
+            Console.WriteLine("*****************************");
         }
         catch (Client.ClientError e)
         {
