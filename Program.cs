@@ -1,14 +1,29 @@
 using System;
-using System.Threading;
-using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Dynamic;
 
+
+class Collection 
+{
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+    public string name { get; set; }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+}
+class Base
+{
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+    public string _id { get; set; }
+    public string _type { get; set; }
+    public string name { get; set; }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+}
 class Program
 {
-     static void Main(string[] args)
+    static async Task Main(string[] args)
     {
-          // Subscribe to the UnhandledException event
+        // Set up exception handlers
         AppDomain.CurrentDomain.UnhandledException += (sender, eventArgs) =>
         {
             Console.WriteLine("Unhandled Exception occurred:");
@@ -22,195 +37,509 @@ class Program
             }
         };
 
-        // Subscribe to the UnobservedTaskException event
         TaskScheduler.UnobservedTaskException += (sender, eventArgs) =>
         {
             Console.WriteLine("Unobserved Task Exception occurred:");
             Console.WriteLine(eventArgs.Exception.ToString());
-            // Optionally, mark the exception as observed
             eventArgs.SetObserved();
         };
-        
-        MainAsync(args).GetAwaiter().GetResult();
-    }
-    static async Task MainAsync(string[] args)
-    {
-        try
+
+        // Initialize the client
+        Console.WriteLine($"Creating client, Thread ID: {Thread.CurrentThread.ManagedThreadId}");
+        Client client = new Client();
+        // client.enabletracing("info", "");
+        // client.enabletracing("openiap=trace", "new");
+        await client.connect();
+        // client.connect();
+        if (!client.connected())
         {
-            Client client = new Client();
-            // client.enabletracing("openiap=trace", "new");
-            // client.enabletracing("openiap=debug", "new");
-            client.enabletracing("info", "");
-
-            await client.connect();
-            if(!client.connected() ) {
-                client.info("Client connection error: " + client.connectionerror());
-                return;
-            }
-            client.info("Client connection success: " + client.connected());
-
-            var eventid = client.on_client_event((eventObj) => {
-                client.info("Client event " + eventObj.evt + ": " + eventObj.reason);
-            });
-            client.info("Client event id: " + eventid);
-
-            var (jwt, error, success) = await client.Signin();
-            client.info("Signin JWT: " + jwt);
-
-
-            client.info("Remove Client event: " + eventid);
-            client.off_client_event(eventid);
-
-            var files = new string[] { "testfile.csv" };
-            if(!System.IO.File.Exists("testfile.csv")) {
-                files = new string[] { "../testfile.csv" };
-            }
-            // files = new string[] {};
-
-            var workitem = new Workitem { name = "test from dotnet 1", payload = "{\"name\": \"test from dotnet 1\"}" };
-            var push_workitem_result = await client.PushWorkitem("rustqueue", workitem, files);
-            client.info("PushWorkitem: ", push_workitem_result);
-
-            workitem = await client.PopWorkitem("rustqueue");
-            client.info("PopWorkitem: ", workitem);
-            workitem.state = "successful";
-            workitem = await client.UpdateWorkitem(workitem, new string[] { });
-            client.info("UpdateWorkitem: ", workitem);
-
-            await client.DeleteWorkitem(workitem.id);
-
-
-            string results = await client.Query("entities", "{}", "{\"name\": 1}");
-            client.info("results: " + results);
-
-            for(var y = 0; y < 5; y++) {
-                var promises = new List<Task<string>>();
-                for(var x = 0; x < 15; x++) {
-                    promises.Add(client.Query("entities", "{}", "{\"name\": 1}"));
-                }
-                var result = await Task.WhenAll(promises);
-                client.info("results: " + result.Length);
-            }
-
-            // // System.Threading.Thread.Sleep(120000);
-
-            var aggregate_results = await client.Aggregate("entities", "[]");
-            client.info("aggregate results: " + aggregate_results);
-
-            var insert_one_result = await client.InsertOne("entities", "{\"name\": \"test from dotnet\", \"_type\": \"test\"}");
-            client.info("insert one result: " + insert_one_result);
-
-            dynamic? item = JsonSerializer.Deserialize<ExpandoObject>(insert_one_result, new JsonSerializerOptions { IncludeFields = true });
-            if(item == null) throw new Exception("Failed to deserialize insert_one_result");
-            item.name = "test from dotnet updated";
-            System.Text.Json.JsonElement itemid = item._id;
-            var _id = itemid.GetString();
-            if(string.IsNullOrEmpty(_id)) throw new Exception("Failed to get _id from insert_one_result");
-            
-            insert_one_result = JsonSerializer.Serialize(item);
-
-            var update_one_result = await client.UpdateOne("entities", insert_one_result);
-            client.info("update one result: " + update_one_result);
-
-            var delete_one_result = await client.DeleteOne("entities", _id);
-            client.info("delete one result: " + delete_one_result);
-
-            var insert_or_update_one_result2 = await client.InsertOne("entities", "{\"name\": \"test insert or update from dotnet\", \"_type\": \"test\"}");
-            client.info("insert one result: " + insert_or_update_one_result2);
-            dynamic? item2 = JsonSerializer.Deserialize<ExpandoObject>(insert_or_update_one_result2, new JsonSerializerOptions { IncludeFields = true });
-            if(item2 == null) throw new Exception("Failed to deserialize insert_one_result");
-            item2.name = "test insert or update from dotnet updated";
-            insert_or_update_one_result2 = System.Text.Json.JsonSerializer.Serialize(item2);
-            insert_or_update_one_result2 = await client.InsertOrUpdateOne("entities", insert_or_update_one_result2);
-
-            System.Text.Json.JsonElement itemid2 = item2._id;
-            var _id2 = itemid2.GetString();
-            if(string.IsNullOrEmpty(_id2)) throw new Exception("Failed to get _id from insert_one_result");
-
-            var delete_many_by_ids_result = await client.DeleteMany("entities", ids: new string[] { _id2 });
-            client.info("delete many by ids result: " + delete_many_by_ids_result);
-
-            await client.InsertOne("entities", "{\"name\": \"test delete many from dotnet\", \"_type\": \"test\"}");
-            var delete_many_by_query_result = await client.DeleteMany("entities", query: "{\"name\": \"test delete many from dotnet\"}");
-            client.info("delete many by query result: " + delete_many_by_query_result);
-
-            await client.download("fs.files", "65a3aaf66d52b8c15131aebd", folder: "", filename: "");
-
-            var filepath = "testfile.csv";
-            if(!System.IO.File.Exists(filepath))
-            {
-                filepath = "../testfile.csv";
-            }
-            var upload_response = await client.upload(filepath, "dotnet-test.csv", "", "", "fs.files");
-            client.info("Dotnet: upload success as " +  upload_response);
-
-            var eventcount = 0;
-            var watch_response = await client.watch("entities", "", (eventObj) => {
-                client.info("watch event " + eventObj.operation + " on " + eventObj.document);
-                eventcount++;
-            });
-            client.info("Dotnet: watch registered success as " +  watch_response);
-
-            var insert_many_result = await client.InsertMany("entities", "[{\"name\": \"test from dotnet 1 \", \"_type\": \"test\"}, {\"name\": \"test from dotnet 2\", \"_type\": \"test\"}]");
-
-            while (eventcount < 2)
-            {
-                await Task.Delay(1000);
-            }
-            client.UnWatch(watch_response);
-
-            var queuecount = 0;
-            var register_queue_response = await client.RegisterQueue("test2queue", (eventObj) => {
-                client.info("watch event " + eventObj.queuename + " on " + eventObj.data);
-                queuecount++;
-            });
-            client.info("Dotnet: registered queue success as " + register_queue_response);
-
-            await client.QueueMessage("{\"name\": \"test message 1 \"}", "test2queue");
-            await client.QueueMessage("{\"name\": \"test message 2 \"}", "test2queue");
-
-            while (queuecount < 2)
-            {
-                await Task.Delay(1000);
-            }
-            client.UnRegisterQueue(register_queue_response);
-
-            var exchangecount = 0;
-            var register_exchange_response = await client.RegisterExchange("testexc", eventHandler: (eventObj) => {
-                client.info("watch event " + eventObj.queuename + " on " + eventObj.data);
-                exchangecount++;
-            });
-            client.info("Dotnet: registered exchange success, using queue " + register_exchange_response);
-
-            await client.QueueMessage("{\"name\": \"test message 1 \"}", exchangename: "testexc");
-            await client.QueueMessage("{\"name\": \"test message 2 \"}", exchangename: "testexc");
-
-            while (exchangecount < 2)
-            {
-                await Task.Delay(1000);
-            }
-            client.UnRegisterQueue(register_exchange_response);
-
-
-            var count_response = await client.Count("entities", "");
-            client.info("Dotnet: count success as " +  count_response);
-
-            var distinct_response = await client.Distinct("entities", "_type");
-            client.info("Dotnet: distinct success as " + string.Join(",", distinct_response));
-
-            client.info("Keep client alive test");
-            while(true) {
-                await Task.Delay(1000);
-            }
-
-            Console.WriteLine("*********************************");
-            Console.WriteLine("done, free client");
-            Console.WriteLine("*********************************");
-            client.Dispose();
+            Console.WriteLine("Client connection error: " + client.connectionerror());
+            return;
         }
-        catch (Client.ClientError e)
+        Console.WriteLine("Client connection success: " + client.connected());
+
+        // Command handling loop
+        Console.WriteLine("? for help");
+        string input = "";
+        string watchId = "";
+        var cancellationTokenSource = new CancellationTokenSource();
+        CancellationToken token = cancellationTokenSource.Token;
+        cancellationTokenSource.Cancel();
+        while (input.ToLower() != "quit")
         {
-            Console.WriteLine($"An error occurred: {e.Message}");
+            Console.Write("Enter command: ");
+            input = (Console.ReadLine()?.ToLower() ?? "").Trim();
+
+            switch (input)
+            {
+                case "?":
+                    Console.WriteLine("Commands:");
+                    Console.WriteLine("quit - Exit the application");
+                    Console.WriteLine("s - Sign in as guest");
+                    Console.WriteLine("q - Query entities");
+                    Console.WriteLine("i - Insert an entity");
+                    Console.WriteLine("w - Watch for changes");
+                    Console.WriteLine("uw - Unwatch");
+                    break;
+                case "0":
+                    client.disabletracing();
+                    break;
+                case "1":
+                    client.enabletracing("openiap=info", "");
+                    break;
+                case "2":
+                    client.enabletracing("openiap=debug", "new");
+                    break;
+                case "3":
+                    client.enabletracing("openiap=trace", "new");
+                    break;
+                case "4":
+                    client.enabletracing("trace", "new");
+                    break;
+                case "dis":
+                    try {
+                        var t = System.Threading.Tasks.Task.Run(() => {
+                            client.disconnect();
+                        });
+                        // client.disconnect();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error disconnecting: " + e.Message);
+                    }
+                    break;
+                case "gc":
+                    GC.Collect();
+                    break;
+                case "t":
+                    var res = Task.Run(async () => {
+                        await test.Test(client);
+                    });
+                    break;
+                case "st":
+                    if(!token.IsCancellationRequested) {
+                        Console.WriteLine("Stopping running task.");
+                        cancellationTokenSource.Cancel();
+                        break;
+                    }
+                    cancellationTokenSource = new CancellationTokenSource();
+                    token = cancellationTokenSource.Token;
+                    int x = 0;
+                    var task = Task.Run(async () => 
+                    {
+                        Console.WriteLine("Task started, begin loop...");
+                        while (!token.IsCancellationRequested)
+                        {
+                            try
+                            {
+                                x++;
+                                var workitem = await client.PopWorkitem("q2");
+                                Thread.Sleep(1);
+                                if (workitem != null)
+                                {                          
+
+                                    Console.WriteLine("Updating ", workitem.id, workitem.name);
+                                    workitem.state = "successful";
+                                    workitem = await client.UpdateWorkitem(workitem, new string[] { });
+                                }
+                                else
+                                {
+                                    if (x % 500 == 0)
+                                    {
+                                        Console.WriteLine("No new workitem", DateTime.Now);
+                                        GC.Collect();
+                                    }
+                                }
+                            }
+                            catch (System.Exception ex)
+                            {   
+                                Console.WriteLine("Error: ", ex.ToString());
+                            }
+                        }
+                        Console.WriteLine("Task canceled.");
+                    }, token);
+                    break;
+                case "st2":
+                    if(!token.IsCancellationRequested) {
+                        Console.WriteLine("Stopping running task.");
+                        cancellationTokenSource.Cancel();
+                        break;
+                    }
+                    cancellationTokenSource = new CancellationTokenSource();
+                    token = cancellationTokenSource.Token;
+                    int x2 = 0;
+                    var task2 = Task.Run(async () => 
+                    {
+                        Console.WriteLine("Task started, begin loop...");
+                        while (!token.IsCancellationRequested)
+                        {
+                            try
+                            {
+                                x2++;
+                                Thread.Sleep(1);
+                                await test.Test(client);
+                                if (x2 % 500 == 0)
+                                {
+                                    Console.WriteLine("No new workitem", DateTime.Now);
+                                    GC.Collect();
+                                }
+                            }
+                            catch (System.Exception ex)
+                            {   
+                                Console.WriteLine("Error: ", ex.ToString());
+                            }
+                        }
+                        Console.WriteLine("Task canceled.");
+                    }, token);
+                    break;
+                case "s":
+                    try {
+                        var (jwt, error, success) = await client.Signin();
+                        Console.WriteLine("Signin JWT: " + jwt);
+                    } catch (Exception e) {
+                        Console.WriteLine("Error signing in: " + e.Message);
+                    }
+                    break;
+
+                case "q2":
+                    try {
+                        var t = Task.Run(async () => {
+                            Console.WriteLine($"Creating client, Thread ID: {Thread.CurrentThread.ManagedThreadId}");
+                            var results = await client.Query<List<Base>>("entities", "{}", "{\"name\": 1}");
+                            Console.WriteLine("Query returned " + results.Count + " results.");
+                            for (int i = 0; i < results.Count; i++)
+                            {
+                                Console.WriteLine(results[i]._id, " ", results[i].name);
+                                if (i > 10) {
+                                    break;
+                                }
+                            }
+                        });
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error querying: " + e.Message);
+                    }
+                    break;
+                case "qq":
+                    try {
+                        Console.WriteLine($"Creating client, Thread ID: {Thread.CurrentThread.ManagedThreadId}");
+                        var results = await client.Query<List<Base>>("entities", "{}", "{\"name\": 1}");
+                        Console.WriteLine("Query returned " + results.Count + " results.");
+                        for (int i = 0; i < results.Count; i++)
+                        {
+                            Console.WriteLine(results[i]._id, " ", results[i].name);
+                            if (i > 10) {
+                                break;
+                            }
+                        }
+
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error querying: " + e.Message);
+                    }
+                    break;
+                case "q":
+
+                    try {
+                        var results = Task.Run(async () => {
+                            Console.WriteLine($"Creating client, Thread ID: {Thread.CurrentThread.ManagedThreadId}");
+                            var results = await client.Query<List<Base>>("entities", "{}", "{\"name\": 1}");
+                            return results;
+                        }).Result;
+                        Console.WriteLine("Query returned " + results.Count + " results.");
+                        for (int i = 0; i < results.Count; i++)
+                        {
+                            Console.WriteLine(results[i]._id, " ", results[i].name);
+                            if (i > 10) {
+                                break;
+                            }
+                        }
+
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error querying: " + e.Message);
+                    }
+                    break;
+                case "a":
+                    try {
+                        var results = await client.Aggregate<List<Base>>("entities", "[{\"$match\": {\"_type\": \"test\"}}]");
+                        Console.WriteLine("Aggregation returned " + results.Count + " results.");
+                        for (int i = 0; i < results.Count; i++)
+                        {
+                            Console.WriteLine(results[i]._id, " ", results[i].name);
+                            if (i > 10) {
+                                break;
+                            }
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error querying: " + e.Message);
+                    }
+                    break;
+
+                case "l":
+                    try {
+                        // string results = await client.ListCollections<string>();
+                        // Console.WriteLine("Query results: " + results);
+                        var results = await client.ListCollections<List<Collection>>();
+                        Console.WriteLine("ListCollections returned " + results.Count + " results.");
+                        for (int i = 0; i < results.Count; i++)
+                        {
+                            Console.WriteLine(results[i].name);
+                            if (i > 10) {
+                                break;
+                            }
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error querying: " + e.Message);
+                    }
+                    break;
+                case "c":
+                    try {
+                        var count_res = await client.Count("entities", "{}");
+                        Console.WriteLine("Count result: " + count_res);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error creating collection: " + e.Message);
+                    }
+                    break;
+                case "dd":
+                    try {
+                        var distinct_res = await client.Distinct("entities", "name", "{}");
+                        for (int i = 0; i < distinct_res.Count(); i++)
+                        {
+                            Console.WriteLine(distinct_res[i]);
+                            if (i > 10) {
+                                break;
+                            }
+                        }
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error creating collection: " + e.Message);
+                    }
+                    break;
+                case "cc":
+                    try {
+                        await client.CreateCollection("testdotnetcollection");
+                        Console.WriteLine("Create testdotnetcollection Collection success.");
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error creating collection: " + e.Message);
+                    }
+                    break;
+                case "cc2":
+                    try {
+                        await client.CreateCollection("testdotnettscollection", timeseries: 
+                        new Client.ColTimeseriesWrapper("ts", "", "minutes"));
+                        Console.WriteLine("Create testdotnettscollection Collection success.");
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error creating collection: " + e.Message);
+                    }
+                    break;
+                case "cc3":
+                    try {
+                        await client.CreateCollection("testdotnetcollection");
+                        Console.WriteLine("Create testdotnetcollection Collection success.");
+                        await client.CreateIndex("testdotnetcollection", "{\"name\": 1}");
+                        Console.WriteLine("Create index on testdotnetcollection Collection success.");
+                        await client.InsertOne<Base>("testdotnetcollection", "{\"name\": \"test from dotnet\", \"_type\": \"test\"}");
+                        Console.WriteLine("Insert test entity into testdotnetcollection Collection success.");
+                        var results = await client.GetIndexes<string>("testdotnetcollection");
+                        Console.WriteLine("GetIndexes ", results);
+                        await client.DropIndex("testdotnetcollection", "name_1");
+                        Console.WriteLine("Drop index on testdotnetcollection Collection success.");
+                        results = await client.GetIndexes<string>("testdotnetcollection");
+                        Console.WriteLine("GetIndexes ", results);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error creating collection: " + e.Message);
+                    }
+                    break;
+                case "dc":
+                    try {
+                        await client.DropCollection("testdotnetcollection");
+                        Console.WriteLine("Drop testdotnetcollection Collection success.");
+                        await client.DropCollection("testdotnettscollection");
+                        Console.WriteLine("Drop testdotnettscollection Collection success.");
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error dropping collection: " + e.Message);
+                    }
+                    break;
+                case "gi":
+                    try {
+                        var result = await client.GetIndexes<string>("entities");
+                        Console.WriteLine("GetIndexes result: " + result);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error inserting: " + e.Message);
+                    }
+                    break;
+
+                case "i":
+                    try {
+                        var item = new { name = "test from dotnet", _type = "test" };
+                        var result = await client.InsertOne<Base>("entities", JsonSerializer.Serialize(item));
+                        Console.WriteLine(result._id, " ", result.name);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error inserting: " + e.Message);
+                    }
+                    break;
+                case "u1":
+                    try {
+                        var item = new Base { name = "test from dotnet", _type = "test" };
+                        item = await client.InsertOne<Base>("entities", JsonSerializer.Serialize(item));
+                        Console.WriteLine(item._id, " ", item.name);
+                        item.name = "updated from dotnet";
+                        var result = await client.UpdateOne<Base>("entities", JsonSerializer.Serialize(item));
+                        Console.WriteLine(result._id, " ", result.name);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Console.WriteLine("Error updating: " + e.Message);
+                    }
+                    break;
+
+                case "im":
+                    try {
+                        var items = new[] {
+                            new { name = "Allan", _type = "test" },
+                            new { name = "Allan2", _type = "test" }
+                        };
+                        // var insertManyResult = await client.InsertMany("entities", JsonSerializer.Serialize(items));
+                        // if (insertManyResult == null)
+                        // {
+                        //     Console.WriteLine("Failed to insert many.");
+                        // }
+                        // else
+                        // {
+                        //     Console.WriteLine("Inserted items: " + insertManyResult);
+                        // }
+                        var results = await client.InsertMany<List<Base>>("entities", JsonSerializer.Serialize(items));
+                        for (int i = 0; i < results.Count; i++)
+                        {
+                            Console.WriteLine(results[i]._id, " ", results[i].name);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error inserting many: " + e.Message);
+                    }
+                    break;
+                case "d":
+                    try {
+                        var deleteResult = await client.download("fs.files", "65a3aaf66d52b8c15131aebd");
+                        if (deleteResult == null)
+                        {
+                            Console.WriteLine("Failed to download.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Downloaded as: " + deleteResult);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Download error: " + e.Message);
+                    }
+                    break;
+                case "u":
+                    try {
+                        var uploadResult = await client.upload("train.csv", "train.csv");
+                        if (uploadResult == null)
+                        {
+                            Console.WriteLine("Failed to upload.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Uploaded as: " + uploadResult);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error disconnecting: " + e.Message);
+                    }
+                    break;
+                case "w":
+                    try {
+                        watchId = await client.watch( "entities", "[]", e => {
+                            Console.WriteLine("Watch event: " + e.operation + " " + e.id, e.document);
+                        });
+                        Console.WriteLine("Watch registered with id: " + watchId);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Watch error: " + e.Message);
+                    }
+                    break;
+                case "uw":
+                    try {
+                        if (string.IsNullOrEmpty(watchId))
+                        {
+                            Console.WriteLine("No watch ID to remove.");
+                            break;
+                        }
+                        client.off_client_event(watchId);
+                        Console.WriteLine("Removed watch ID: " + watchId);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Watch error: " + e.Message);                        
+                    }
+                    break;
+                case "r":
+                    try {
+                        var queueId = client.RegisterQueue("test2queue", e => {
+                            Console.WriteLine("Queue event received from " + e.queuename + " with data: " + e.data);
+                        });
+                        Console.WriteLine("Queue registered with id: " + queueId);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error disconnecting: " + e.Message);                        
+                    }
+                    break;
+                case "m":
+                    try {
+                        var message = "{\"message\": \"Hello from dotnet\"}";
+                        await client.QueueMessage(message, "test2queue", striptoken: true);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error disconnecting: " + e.Message);
+                    }
+                    break;
+                case "quit":
+                    try {
+                        client.Dispose();
+                        Console.WriteLine("Client disposed. Exiting...");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Error disposing client: " + e.Message);
+                    }
+                    break;
+
+                default:
+                    // Console.WriteLine("Unknown command. Type '?' for help.");
+                    break;
+            }
         }
     }
 }
