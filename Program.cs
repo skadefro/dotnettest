@@ -60,15 +60,13 @@ class Program
 
         // Command handling loop
         Console.WriteLine("? for help");
-        string input = "";
+        string input = "bum";
         string watchId = "";
         var cancellationTokenSource = new CancellationTokenSource();
         CancellationToken token = cancellationTokenSource.Token;
         cancellationTokenSource.Cancel();
         while (input.ToLower() != "quit")
         {
-            Console.Write("Enter command: ");
-            input = (Console.ReadLine()?.ToLower() ?? "").Trim();
 
             switch (input)
             {
@@ -117,6 +115,8 @@ class Program
                     });
                     break;
                 case "st":
+                case "bum":
+                    input = "";
                     if(!token.IsCancellationRequested) {
                         Console.WriteLine("Stopping running task.");
                         cancellationTokenSource.Cancel();
@@ -540,6 +540,8 @@ class Program
                     // Console.WriteLine("Unknown command. Type '?' for help.");
                     break;
             }
+            Console.Write("Enter command: ");
+            input = (Console.ReadLine()?.ToLower() ?? "").Trim();
         }
     }
 }

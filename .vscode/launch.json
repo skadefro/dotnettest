@@ -1,7 +1,6 @@
 {
     "version": "0.2.0",
     "configurations": [
-        
         {
             "name": ".NET Core Launch ${project.name}",
             "type": "coreclr",
@@ -11,7 +10,7 @@
             "console": "integratedTerminal",
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "envFile": "${workspaceFolder}/.env"
+            "envFile": "${workspaceFolder}/.env",
         }
     ]
 }

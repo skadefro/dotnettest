@@ -1,10 +1,10 @@
 {
     "name": "dotnettest",
-    "version": "0.0.2",
+    "version": "0.0.6",
     "description": "Example agent, please change",
     "main": "",
     "openiap": {
-        "daemon": false,
+        "daemon": true,
         "chromium": false,
         "language": "dotnet"
     }
