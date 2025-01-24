@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Dynamic;
-
+using OpenIAP;
 
 class Collection 
 {
@@ -60,13 +60,15 @@ class Program
 
         // Command handling loop
         Console.WriteLine("? for help");
-        string input = "bum";
+        string input = "";
         string watchId = "";
         var cancellationTokenSource = new CancellationTokenSource();
         CancellationToken token = cancellationTokenSource.Token;
         cancellationTokenSource.Cancel();
         while (input.ToLower() != "quit")
         {
+            Console.Write("Enter command: ");
+            input = (Console.ReadLine()?.ToLower() ?? "").Trim();
 
             switch (input)
             {
@@ -94,6 +96,29 @@ class Program
                 case "4":
                     client.enabletracing("trace", "new");
                     break;
+                case "pp":
+                    var pushwi = new Workitem { name = "test from dotnet", payload = "{\"_type\": \"test\"}"};
+                    // var pushwires = await client.PushWorkitem("q2", pushwi,new string[] {"2023_State of the Union address_multilingual.pdf"});
+                    var pushwires = await client.PushWorkitem("q2", pushwi,new string[] {"assistant-linux-x86_64.AppImage"});
+                    // var pushwires = await client.PushWorkitem("q2", pushwi,new string[] {"../testfile.csv"});
+                    Console.WriteLine("Pushed workitem: {0} {1}", pushwires.id, pushwires.name);
+                    break;
+                case "p":
+                    if(System.IO.Directory.Exists("downloads")) {
+                        System.IO.Directory.Delete("downloads", true);
+                    }
+                    System.IO.Directory.CreateDirectory("downloads");
+                    var popwi = await client.PopWorkitem("q2", downloadfolder: "downloads");
+                    if(popwi != null) {
+                        Console.WriteLine("Popped workitem: ", popwi.id, popwi.name);
+                        for(var i = 0; i < popwi.files.Length; i++) {
+                            Console.WriteLine("File: ", popwi.files[i]);
+                            System.IO.File.Copy("downloads/" + popwi.files[i].filename, "downloads/" + popwi.files[i].filename + ".copy");
+                        }
+                    } else {
+                        Console.WriteLine("No workitem to pop.");
+                    }
+                    break;
                 case "dis":
                     try {
                         var t = System.Threading.Tasks.Task.Run(() => {
@@ -115,8 +140,6 @@ class Program
                     });
                     break;
                 case "st":
-                case "bum":
-                    input = "";
                     if(!token.IsCancellationRequested) {
                         Console.WriteLine("Stopping running task.");
                         cancellationTokenSource.Cancel();
@@ -540,8 +563,6 @@ class Program
                     // Console.WriteLine("Unknown command. Type '?' for help.");
                     break;
             }
-            Console.Write("Enter command: ");
-            input = (Console.ReadLine()?.ToLower() ?? "").Trim();
         }
     }
 }
