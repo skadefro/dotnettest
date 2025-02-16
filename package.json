@@ -1,8 +1,8 @@
 {
     "name": "dotnettest",
-    "version": "0.0.8",
-    "description": "Example agent, please change",
-    "main": "",
+    "version": "0.0.9",
+    "description": "Example agent, showing how to call most commmands",
+    "main": "dotnettest.csproj",
     "openiap": {
         "daemon": true,
         "chromium": false,

@@ -65,11 +65,13 @@ class Program
         var cancellationTokenSource = new CancellationTokenSource();
         CancellationToken token = cancellationTokenSource.Token;
         cancellationTokenSource.Cancel();
+        // Simple check to see if we are running inside a container, then run the st_func
+        var oidc_config = Environment.GetEnvironmentVariable("oidc_config");
+        if (!string.IsNullOrEmpty(oidc_config)) {
+            input = "st";
+        }
         while (input.ToLower() != "quit")
         {
-            Console.Write("Enter command: ");
-            input = (Console.ReadLine()?.ToLower() ?? "").Trim();
-
             switch (input)
             {
                 case "?":
@@ -563,6 +565,9 @@ class Program
                     // Console.WriteLine("Unknown command. Type '?' for help.");
                     break;
             }
+        
+            Console.Write("Enter command: ");
+            input = (Console.ReadLine()?.ToLower() ?? "").Trim();
         }
     }
 }
