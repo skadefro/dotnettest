@@ -12,7 +12,7 @@ To re-install the openiap package, you can use the following commands
 
 rm -rf bin && dotnet nuget locals all --clear && dotnet add package openiap -s ../openiap/dotnet/packages && dotnet run 
 
-rm -rf bin && dotnet nuget locals all --clear && dotnet add package openiap --version 0.0.24 && dotnet run 
+rm -rf bin && dotnet nuget locals all --clear && dotnet add package openiap --version 0.0.36 && dotnet run 
 ```
 To clear local cache, in case of any issues
 ```

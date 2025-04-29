@@ -607,7 +607,7 @@ class Program
         case "r":
           try
           {
-            var queueId = client.RegisterQueue("test2queue", e =>
+            var queueId = client.RegisterQueue("test2queue", async e =>
             {
               Console.WriteLine("Queue event received from " + e.queuename + " with data: " + e.data);
               // if(!string.IsNullOrEmpty(e.replyto)) {

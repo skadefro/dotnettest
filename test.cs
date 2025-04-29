@@ -138,7 +138,7 @@ public class test
             client.UnWatch(watch_response);
 
             var queuecount = 0;
-            var register_queue_response = client.RegisterQueue("test2queue", (eventObj) => {
+            var register_queue_response = client.RegisterQueueAction("test2queue", (eventObj) => {
                 Console.WriteLine("watch event " + eventObj.queuename + " on " + eventObj.data);
                 queuecount++;
             });
